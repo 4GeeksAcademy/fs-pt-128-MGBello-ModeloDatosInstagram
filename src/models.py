@@ -1,8 +1,22 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, ForeignKey
+from typing import List
+from sqlalchemy import String, ForeignKey, Column, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
+
+follower_user = Table(
+    "follower_user",
+    db.metadata,
+    Column("user_from", ForeignKey("user.id")),
+    Column("user_to", ForeignKey("follower.id"))
+)
+
+
+class Follower(db.Model):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user: Mapped[List["User"]] = relationship(
+        secondary="follower_user", back_populates="follower")
 
 
 class User(db.Model):
@@ -15,9 +29,11 @@ class User(db.Model):
         String(120), unique=False, nullable=False)
     email: Mapped[str] = mapped_column(
         String(120), unique=True, nullable=False)
-    comments: Mapped[list["Comment"]] = relationship(
+    comments: Mapped[List["Comment"]] = relationship(
         back_populates="user_comment")
-    posts: Mapped[list["Post"]] = relationship(back_populates="user_post")
+    posts: Mapped[List["Post"]] = relationship(back_populates="user_post")
+    follower: Mapped[List["Follower"]] = relationship(
+        secondary="follower_user", back_populates="user")
 
     def serialize(self):
         return {
@@ -53,9 +69,9 @@ class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user_post: Mapped["User"] = relationship(back_populates="posts")
-    post_comments: Mapped[list["Comment"]] = relationship(
+    post_comments: Mapped[List["Comment"]] = relationship(
         back_populates="comments_for_post")
-    post_media: Mapped[list["Media"]] = relationship(
+    post_media: Mapped[List["Media"]] = relationship(
         back_populates="media_in_post")
 
     def serialize(self):
