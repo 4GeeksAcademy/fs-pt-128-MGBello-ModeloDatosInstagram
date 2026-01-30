@@ -4,19 +4,28 @@ from sqlalchemy import String, ForeignKey, Column, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
+# Primera solucion con tabla auxiliar
+# follower_user = Table(
+#     "follower_user",
+#     db.metadata,
+#     Column("user_from", ForeignKey("user.id")),
+#     Column("user_to", ForeignKey("follower.id"))
+# )
 
-follower_user = Table(
-    "follower_user",
+
+# class Follower(db.Model):
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     user: Mapped[List["User"]] = relationship(
+#         secondary="follower_user", back_populates="follower")
+
+# Segunda solucion sin la tabla de followers, usando solo la auxiliar
+
+follower = Table(
+    "follower",
     db.metadata,
-    Column("user_from", ForeignKey("user.id")),
-    Column("user_to", ForeignKey("follower.id"))
+    Column("user_from_id", ForeignKey("user.id")),
+    Column("user_to_id", ForeignKey("user.id"))
 )
-
-
-class Follower(db.Model):
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user: Mapped[List["User"]] = relationship(
-        secondary="follower_user", back_populates="follower")
 
 
 class User(db.Model):
@@ -32,8 +41,18 @@ class User(db.Model):
     comments: Mapped[List["Comment"]] = relationship(
         back_populates="user_comment")
     posts: Mapped[List["Post"]] = relationship(back_populates="user_post")
-    follower: Mapped[List["Follower"]] = relationship(
-        secondary="follower_user", back_populates="user")
+    # follower: Mapped[List["Follower"]] = relationship(
+    #     secondary="follower_user", back_populates="user")
+    following: Mapped[List["User"]] = relationship(
+        "User", secondary="follower",
+        primaryjoin=(follower.c.user_to_id == id),
+        secondaryjoin=(follower.c.user_from_id == id),
+        back_populates="followers")
+    followers: Mapped[List["User"]] = relationship(
+        "User", secondary="follower",
+        primaryjoin=(follower.c.user_from_id == id),
+        secondaryjoin=(follower.c.user_to_id == id),
+        back_populates="following")
 
     def serialize(self):
         return {
